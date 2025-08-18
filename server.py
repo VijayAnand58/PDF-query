@@ -1,17 +1,24 @@
-from fastapi import FastAPI, HTTPException, Request,Query,Depends,File,UploadFile
+from fastapi import FastAPI, HTTPException, Request,File,UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from pdf_parsser import parse_pdf,delete_all_traces,store_pdf
+from mongodb_models import insert, check
 import os
+import secrets
+import asyncio
 import shutil
+
 from doc_retriever import ask_question
+from pdf_parsser import store_pdf, parse_pdf, delete_all_traces
+from text_embedddings import store_text_and_images,delete_user_embeddings
 app = FastAPI()
-UPLOAD_DIR=r"c:\Users\vijay\Documents\Programming\docu_retiever_langchain\input"
+MAIN_DIR = os.path.dirname(__file__)
+UPLOAD_DIR = os.path.join(MAIN_DIR, "input")
 if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(input, exist_ok=True)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Explicitly define allowed origins for CORS
 allowed_origins = ["*"]
 
@@ -23,36 +30,164 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
+    same_site="strict",  # Required for cross-origin cookies
+    https_only=True,  # Ensure cookies are sent only over HTTPS
+    max_age= 3600,  # Set cookie expiration time (1 hour)
+)
+@app.middleware("http") 
+async def update_session_timeout(request: Request, call_next): 
+    response = await call_next(request) 
+    if "session" in request.session: 
+        response.set_cookie("session", request.cookies["session"], max_age= 3600, httponly=True, samesite="strict", secure=True) 
+    return response
+
+class UserDetails(BaseModel):
+    first_name: str
+    last_name: str
+    email_id: str
+    password: str
+
+# Endpoints
+@app.post("/register/user")
+async def create_user(user: UserDetails):
+    try:
+        value = insert(user.first_name, user.last_name, user.email_id,user.password)
+        if value == "Already exists":
+            raise HTTPException(status_code=400, detail="User already exists")
+        elif value == "Password Format Error":
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters long, contain at least one uppercase letter, one digit, and one special character.")
+        return {"message": "Registration successful"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+class Login(BaseModel):
+    email_id: str
+    password: str
+
+@app.post("/login")
+async def login(user: Login, request: Request):
+    if request.session.get("email_id"):
+        raise HTTPException(status_code=400, detail="User already logged in")
+    result = check(user.email_id, user.password)
+    if result == "Success":
+        request.session["email_id"] = user.email_id
+        return {"message": "Login successful", "email_id": user.email_id}
+    elif result == "No User Exists":
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    elif result == "Wrong Password":
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    elif result == "Error":
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/protected/upload/")
+async def upload( request: Request,files: list[UploadFile] = File(...)):
+    try:
+        user_email= request.session.get("email_id")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="User not logged in")
+        if not files:
+            raise HTTPException(status_code=400, detail="No files uploaded")
+        
+        user_directory_info=store_pdf(useremail=user_email)
+        user_input_directory=user_directory_info[0]
+        all_filenames=[]
+        for file in files:
+            all_filenames.append(file.filename)
+            file_path = os.path.join(user_input_directory, file.filename)
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+        loop=asyncio.get_event_loop()
+        await loop.run_in_executor(None, parse_pdf, dir_list=user_directory_info, useremail=user_email)
+        await loop.run_in_executor(None, store_text_and_images, user_email=user_email)
+        # parse_pdf(dir_list=user_directory_info,useremail=user_email)
+        # store_text_and_images(user_email=user_email)
+        print("Files uploaded and processed successfully.")
+        return {"message": "files uploaded and processed.","filenames": all_filenames}
+    except Exception as e:
+        if request.session.get("email_id"):
+            user_email = request.session.get("email_id")
+            delete_all_traces(email_address=user_email)
+            delete_user_embeddings(user_email=user_email)
+            print("Deleted user traces due to error.")
+        print("Error in file upload and processing.")
+        raise HTTPException(status_code=500, detail="An error occurred during file upload and processing.")
+
 class Chat(BaseModel):
     query:str
+    image_switch:Optional[bool]=False  
 
-@app.post("/chat/")
-async def chatables(chat:Chat):
+@app.post("/protected/chat/all_pdfs/")
+async def chat_with_all_pdfs(chat:Chat,request: Request):
     try:
-        result:tuple=ask_question(chat.query)
+        user_email = request.session.get("email_id")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="User not logged in")
+        result:dict= await ask_question(user_email=user_email,input=chat.query,
+                                 image_search_switch=chat.image_switch)
         response={'message':"Successfully retrieved",
-                  "text_answer":result[0],
-                  "img_answer":result[1]}
+                  'result':result}
         return response
     except:
         raise HTTPException(status_code=400,detail="Problem with chat")
 
-@app.post("/upload/")
-async def upload(user_email:str,files: list[UploadFile] = File(...)):
+class ChatSpecificPDFs(BaseModel):
+    query: str
+    image_switch: Optional[bool] = False
+    pdf_names: List[str]
+
+@app.post("/protected/chat/specific_pdfs/")
+async def chat_with_specific_pdfs(chat:Chat,request: Request):
     try:
-        # delete_all_traces()
-        user_directory_info=store_pdf(useremail=user_email)
-        user_input_directory=user_directory_info[0]
-        user_output_directory=user_directory_info[1]
-        for file in files:
-            file_path = os.path.join(user_input_directory, file.filename)
-            with open(file_path, "wb") as f:
-                shutil.copyfileobj(file.file, f)
-        parse_pdf(dir_list=user_directory_info,useremail=user_email)
-        return {"message": "files uploaded and processed."}
+        user_email = request.session.get("email_id")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="User not logged in")
+        result:dict= await ask_question(user_email=user_email,input=chat.query,
+                                 image_search_switch=chat.image_switch,
+                                 pdf_to_check_switch=True,
+                                 pdf_to_check=chat.pdf_names)
+        response={'message':"Successfully retrieved",
+                  'result':result}
+        return response
     except:
-        delete_all_traces()
-        raise HTTPException(status_code=400,detail="problem with the files")
+        raise HTTPException(status_code=400,detail="Problem with chat")
+
+class ChatOnePDFPage(BaseModel):
+    query: str
+    image_switch: Optional[bool] 
+    pdf_name: str
+    page_number: int
+
+@app.post("/protected/chat/one_pdf_page/")
+async def chat_with_one_pdf_page(chat:Chat,request: Request):
+    try:
+        user_email = request.session.get("email_id")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="User not logged in")
+        result:dict= await ask_question(user_email=user_email,input=chat.query,
+                                 image_search_switch=chat.image_switch,
+                                 pdf_to_check_switch=True,
+                                 one_pdf_page_check_switch=True,
+                                 one_pdf_page_check=[chat.pdf_name,chat.page_number])
+        response={'message':"Successfully retrieved",
+                  'result':result}
+        return response
+    except:
+        raise HTTPException(status_code=400,detail="Problem with chat")   
+
+@app.post("/protected/logout/")
+def logout(request: Request):
+    try:
+        delete_all_traces(email_address=request.session.get("email_id"))
+        delete_user_embeddings(user_email=request.session.get("email_id"))
+        request.session.pop("email_id", None)
+        return {"message": "Logout successful"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
 @app.get("/health")
 async def health():
     return {"message":"Healthy server"}

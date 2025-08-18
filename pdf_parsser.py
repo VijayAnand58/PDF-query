@@ -10,8 +10,9 @@ def safe_folder_name(email: str) -> str:
     return name.strip('_')
 
 def store_pdf(useremail:str)->list:
-    input_pdf_dir = r"C:\Users\vijay\Documents\Programming\docu_retiever_langchain\input"
-    output_pdf_dir= r"C:\Users\vijay\Documents\Programming\docu_retiever_langchain\output"
+    main_dir = os.path.dirname(__file__)
+    input_pdf_dir = os.path.join(main_dir, "input")
+    output_pdf_dir = os.path.join(main_dir, "output")
     FolderName:str=safe_folder_name(useremail)
     user_input_dir=os.path.join(input_pdf_dir,FolderName)
     user_output_dir=os.path.join(output_pdf_dir,FolderName)
@@ -70,8 +71,11 @@ def delete_all_traces(email_address:str=None):
     if email_address is None:
         raise ValueError("Email address must be provided to delete traces.")
     user_folder = safe_folder_name(email_address)
-    input_directory = os.path.join(r"C:\Users\vijay\Documents\Programming\docu_retiever_langchain\input", user_folder)
-    output_directory = os.path.join(r"C:\Users\vijay\Documents\Programming\docu_retiever_langchain\output", user_folder)
+    main_dir = os.path.dirname(__file__)
+    input_dir = os.path.join(main_dir, "input")
+    output_dir = os.path.join(main_dir, "output")
+    input_directory = os.path.join(input_dir, user_folder)
+    output_directory = os.path.join(output_dir, user_folder)
     if os.path.exists(input_directory):
         shutil.rmtree(input_directory)
         print(f"Deleted folder: {input_directory}")
@@ -81,7 +85,7 @@ def delete_all_traces(email_address:str=None):
         shutil.rmtree(output_directory)
         print(f"Deleted folder: {output_directory}")
 
-# delete_all_traces("vijay.anand5305@zoho.com")
+# delete_all_traces("vijay.anand5306@zoho.com")
 # store=store_pdf("vijay.anand5306@zoho.com")
 # parse_pdf([r"input\vijay_anand5306_zoho_com",r"output\vijay_anand5306_zoho_com"],"vijay.anand5306@zoho.com")
 #Testing Done
