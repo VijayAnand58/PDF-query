@@ -16,7 +16,7 @@ from langgraph.graph import START, StateGraph
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
 from typing_extensions import List, TypedDict, Optional
-from text_embedddings import search_images, search_text_page_per_pdf, search_text_total_directory,search_text_specific_pdfs, search_images_specific_pdfs 
+from text_embedddings import search_images, search_text_page_per_pdf, search_text_total_directory,search_text_specific_pdfs, search_images_specific_pdfs,search_images_specific_pages 
 import base64
 from langchain_core.prompts import PromptTemplate
 import asyncio
@@ -79,6 +79,16 @@ async def retriever(state: State):
                 user_email=state["user_email"],
                 query=state["question"],
                 pdf_names=pdf_names,
+                top_k=2)
+        elif state.get("one_pdf_page_check_switch",False):
+            pdf_name, page_number = state.get("one_pdf_page_check", (None, None))
+            if not page_number or not pdf_name:
+                raise ValueError("Page number and PDF name must be specified for text search.")
+            img_results = await search_images_specific_pages(
+                user_email=state["user_email"],
+                query=state["question"],
+                pdf_name=pdf_name,
+                page_number=page_number,
                 top_k=2)
         else:
             img_results = await search_images(
@@ -198,5 +208,5 @@ async def ask_question(input:str, user_email:str, image_search_switch:bool=False
         print("Error in bot:", e)
         return False
     
-# print(asyncio.run(ask_question(input="what is RNN", user_email="john.doe123@example.com", image_search_switch=True,
-#                    pdf_to_check_switch=True, pdf_to_check=["Unit 4 NLP"])))
+# print(asyncio.run(ask_question(input="what is RNN", user_email="vijay123@gmail.com",
+                #    one_pdf_page_check_switch=True, one_pdf_page_check=["Unit 4 NLP",1])))

@@ -134,7 +134,7 @@ async def search_text_page_per_pdf(user_email, query, page_number, pdf_name ,top
                 {"doc": pdf_name}
             ]})
 
-async def search_images(user_email, query, top_k=5):
+async def search_images(user_email, query, top_k=2):
     def _search_images():
         inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True)
         with torch.no_grad():
@@ -149,7 +149,7 @@ async def search_images(user_email, query, top_k=5):
             where={"user_email": user_email})
     return await asyncio.to_thread(_search_images)
 
-async def search_images_specific_pdfs(user_email, query, pdf_names, top_k=5):
+async def search_images_specific_pdfs(user_email, query, pdf_names, top_k=2):
     def _search_images_specific_pdfs():
         inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True)
         with torch.no_grad():
@@ -168,6 +168,27 @@ async def search_images_specific_pdfs(user_email, query, pdf_names, top_k=5):
                 ]
             })
     return await asyncio.to_thread(_search_images_specific_pdfs)
+
+async def search_images_specific_pages(user_email, query, pdf_name,page_number ,top_k=2):
+    def _search_images_specific_pages():
+        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True)
+        with torch.no_grad():
+            query_emb = clip_model.get_text_features(**inputs)[0].cpu().numpy().tolist()
+
+        store = Chroma(
+            collection_name="tenant_embeddings_img",
+            persist_directory=PERSIST_DIR)
+        return store._collection.query(
+            query_embeddings=[query_emb],
+            n_results=top_k,
+            where={
+            "$and": [
+                {"user_email": user_email},
+                {"page": page_number},
+                {"doc": pdf_name}
+            ]})
+    return await asyncio.to_thread(_search_images_specific_pages)
+
 
 def delete_user_embeddings(user_email):
     store = Chroma(

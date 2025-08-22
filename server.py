@@ -20,15 +20,18 @@ UPLOAD_DIR = os.path.join(MAIN_DIR, "input")
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 # Explicitly define allowed origins for CORS
-allowed_origins = ["*"]
+origins = [
+    "http://localhost:5173",  # React dev server
+    "http://127.0.0.1:5173",  # sometimes needed
+]
 
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,  # Explicitly list allowed origins
-    allow_credentials=True,  # Allow cookies and credentials
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_origins = origins,  # Explicitly list allowed origins
+    allow_credentials = True,  # Allow cookies and credentials
+    allow_methods = ["*"],  # Allow all HTTP methods
+    allow_headers = ["*"],  # Allow all headers
 )
 app.add_middleware(
     SessionMiddleware,
@@ -99,9 +102,9 @@ async def upload( request: Request,files: list[UploadFile] = File(...)):
             file_path = os.path.join(user_input_directory, file.filename)
             with open(file_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
-        loop=asyncio.get_event_loop()
-        await loop.run_in_executor(None, parse_pdf, dir_list=user_directory_info, useremail=user_email)
-        await loop.run_in_executor(None, store_text_and_images, user_email=user_email)
+        await asyncio.to_thread(parse_pdf, dir_list=user_directory_info, useremail=user_email)
+        await asyncio.to_thread(store_text_and_images, user_email=user_email)
+
         # parse_pdf(dir_list=user_directory_info,useremail=user_email)
         # store_text_and_images(user_email=user_email)
         print("Files uploaded and processed successfully.")
@@ -112,7 +115,7 @@ async def upload( request: Request,files: list[UploadFile] = File(...)):
             delete_all_traces(email_address=user_email)
             delete_user_embeddings(user_email=user_email)
             print("Deleted user traces due to error.")
-        print("Error in file upload and processing.")
+        print("Error in file upload and processing.",e)
         raise HTTPException(status_code=500, detail="An error occurred during file upload and processing.")
 
 class Chat(BaseModel):
@@ -130,7 +133,8 @@ async def chat_with_all_pdfs(chat:Chat,request: Request):
         response={'message':"Successfully retrieved",
                   'result':result}
         return response
-    except:
+    except Exception as e:
+        print("Error in chat with all pdfs is :",e)
         raise HTTPException(status_code=400,detail="Problem with chat")
 
 class ChatSpecificPDFs(BaseModel):
@@ -139,19 +143,21 @@ class ChatSpecificPDFs(BaseModel):
     pdf_names: List[str]
 
 @app.post("/protected/chat/specific_pdfs/")
-async def chat_with_specific_pdfs(chat:Chat,request: Request):
+async def chat_with_specific_pdfs(chat:ChatSpecificPDFs,request: Request):
     try:
         user_email = request.session.get("email_id")
+        pdf_names_cleaned=[f.rsplit('.', 1)[0] for f in chat.pdf_names]
         if not user_email:
             raise HTTPException(status_code=401, detail="User not logged in")
         result:dict= await ask_question(user_email=user_email,input=chat.query,
                                  image_search_switch=chat.image_switch,
                                  pdf_to_check_switch=True,
-                                 pdf_to_check=chat.pdf_names)
+                                 pdf_to_check=pdf_names_cleaned)
         response={'message':"Successfully retrieved",
                   'result':result}
         return response
-    except:
+    except Exception as e:
+        print("Error in the chat specific pdf is",e)
         raise HTTPException(status_code=400,detail="Problem with chat")
 
 class ChatOnePDFPage(BaseModel):
@@ -161,20 +167,23 @@ class ChatOnePDFPage(BaseModel):
     page_number: int
 
 @app.post("/protected/chat/one_pdf_page/")
-async def chat_with_one_pdf_page(chat:Chat,request: Request):
+async def chat_with_one_pdf_page(chat:ChatOnePDFPage,request: Request):
     try:
         user_email = request.session.get("email_id")
+        # print(chat.pdf_name,chat.page_number)
+        pdf_name_store= chat.pdf_name
+        pdf_name_cleaned= pdf_name_store.rsplit('.',1)[0]
         if not user_email:
             raise HTTPException(status_code=401, detail="User not logged in")
         result:dict= await ask_question(user_email=user_email,input=chat.query,
                                  image_search_switch=chat.image_switch,
-                                 pdf_to_check_switch=True,
                                  one_pdf_page_check_switch=True,
-                                 one_pdf_page_check=[chat.pdf_name,chat.page_number])
+                                 one_pdf_page_check=[pdf_name_cleaned,chat.page_number])
         response={'message':"Successfully retrieved",
                   'result':result}
         return response
-    except:
+    except Exception as e:
+        print("The error in chat with a pdf is :",e)
         raise HTTPException(status_code=400,detail="Problem with chat")   
 
 @app.post("/protected/logout/")
@@ -185,6 +194,7 @@ def logout(request: Request):
         request.session.pop("email_id", None)
         return {"message": "Logout successful"}
     except Exception as e:
+        print("Error in logout is :",e)
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
