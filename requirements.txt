@@ -16,3 +16,4 @@ transformers==4.52.4
 typing_extensions==4.14.1
 itsdangerous
 langchain-community
+sentence-transformers
