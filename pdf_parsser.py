@@ -13,6 +13,10 @@ def store_pdf(useremail:str)->list:
     main_dir = os.path.dirname(__file__)
     input_pdf_dir = os.path.join(main_dir, "input")
     output_pdf_dir = os.path.join(main_dir, "output")
+    if not os.path.exists(input_pdf_dir):
+        os.makedirs(input_pdf_dir,exist_ok=True)
+    if not os.path.exists(output_pdf_dir):
+        os.makedirs(output_pdf_dir,exist_ok=True)
     FolderName:str=safe_folder_name(useremail)
     user_input_dir=os.path.join(input_pdf_dir,FolderName)
     user_output_dir=os.path.join(output_pdf_dir,FolderName)
