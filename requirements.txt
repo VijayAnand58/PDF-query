@@ -1,0 +1,16 @@
+fastapi==0.116.1
+PyMuPDF
+langchain==0.3.27
+langchain_chroma==0.2.5
+langchain_core==0.3.74
+langchain_google_genai==2.1.9
+langgraph==0.6.6
+Pillow==11.3.0
+pydantic==2.11.7
+pymongo==4.14.1
+python-dotenv==1.1.1
+bcrypt
+starlette==0.47.2
+torch==2.7.1
+transformers==4.52.4
+typing_extensions==4.14.1
