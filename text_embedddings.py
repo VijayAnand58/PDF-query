@@ -14,6 +14,9 @@ from langchain_chroma import Chroma
 main_dir = os.path.dirname(__file__)
 PERSIST_DIR = os.path.join(main_dir, "chromadb")
 
+if not os.path.exists(PERSIST_DIR):
+    os.makedirs(PERSIST_DIR,exist_ok=True)
+
 # LangChain text embeddings
 text_embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
