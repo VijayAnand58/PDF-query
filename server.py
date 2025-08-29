@@ -6,6 +6,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from mongodb_models import insert, check
+from starlette.concurrency import run_in_threadpool
 import os
 import secrets
 import asyncio
@@ -83,18 +84,21 @@ class Login(BaseModel):
 
 @app.post("/login")
 async def login(user: Login, request: Request):
-    if request.session.get("email_id"):
-        raise HTTPException(status_code=400, detail="User already logged in")
-    result = check(user.email_id, user.password)
-    if result == "Success":
-        request.session["email_id"] = user.email_id
-        return {"message": "Login successful", "email_id": user.email_id}
-    elif result == "No User Exists":
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    elif result == "Wrong Password":
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    elif result == "Error":
-        raise HTTPException(status_code=500, detail="Internal server error")
+    try:
+        result = check(user.email_id, user.password)
+        if result == "Success":
+            request.session["email_id"] = user.email_id
+            await run_in_threadpool(delete_all_traces,user.email_id)
+            await run_in_threadpool(delete_user_embeddings,user.email_id)
+            return {"message": "Login successful", "email_id": user.email_id}
+        elif result == "No User Exists":
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        elif result == "Wrong Password":
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        elif result == "Error":
+            raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception as e:
+        raise HTTPException(status_code=500,detail="Internal server error")
 
 @app.post("/protected/upload/")
 async def upload( request: Request,files: list[UploadFile] = File(...)):
@@ -198,10 +202,13 @@ async def chat_with_one_pdf_page(chat:ChatOnePDFPage,request: Request):
         raise HTTPException(status_code=400,detail="Problem with chat")   
 
 @app.post("/protected/logout/")
-def logout(request: Request):
+async def logout(request: Request):
     try:
-        delete_all_traces(email_address=request.session.get("email_id"))
-        delete_user_embeddings(user_email=request.session.get("email_id"))
+        user_email=request.session.get("email_id")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="User not logged in")
+        await run_in_threadpool(delete_all_traces,user_email)
+        await run_in_threadpool(delete_user_embeddings,user_email)
         request.session.pop("email_id", None)
         return {"message": "Logout successful"}
     except Exception as e:
