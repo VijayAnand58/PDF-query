@@ -1,0 +1,24 @@
+# Ignore Python cache and venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.db
+
+# Ignore local env files (manage env vars outside container for prod)
+.env
+venv/
+.venv/
+
+# Ignore Git and build junk
+.git
+.gitignore
+.DS_Store
+.idea
+.vscode
+
+# Ignore test data / uploads if not needed in image
+input/
+output/
+chromadb/

@@ -17,3 +17,4 @@ typing_extensions==4.14.1
 itsdangerous
 langchain-community
 sentence-transformers
+python-multipart

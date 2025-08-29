@@ -23,6 +23,7 @@ if not os.path.exists(UPLOAD_DIR):
 origins = [
     "http://localhost:5173",  # React dev server
     "http://127.0.0.1:5173",  # sometimes needed
+    "https://docu-retriver-langcahin-frontend.vercel.app", #my site
 ]
 
 # Configure CORS middleware
@@ -36,7 +37,7 @@ app.add_middleware(
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_SECRET_KEY", secrets.token_hex(16)),
-    same_site="strict",  # Required for cross-origin cookies
+    same_site="none",  # Required for cross-origin cookies
     https_only=True,  # Ensure cookies are sent only over HTTPS
     max_age= 3600,  # Set cookie expiration time (1 hour)
 )
@@ -44,7 +45,17 @@ app.add_middleware(
 async def update_session_timeout(request: Request, call_next): 
     response = await call_next(request) 
     if "session" in request.session: 
-        response.set_cookie("session", request.cookies["session"], max_age= 3600, httponly=True, samesite="strict", secure=True) 
+        # response.set_cookie("session", request.cookies["session"], max_age= 3600, httponly=True, samesite="strict", secure=True) #local
+        response.set_cookie(
+    key="session",
+    value=request.cookies.get("session", ""),  # safer: returns empty string if not present
+    max_age=3600,
+    httponly=True,
+    samesite="none",   # allow same-site requests plus normal form submissions
+    secure=True       # required on HTTPS (Azure Web App)
+)
+
+ 
     return response
 
 class UserDetails(BaseModel):
