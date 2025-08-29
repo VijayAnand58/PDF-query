@@ -23,7 +23,7 @@ if not os.path.exists(UPLOAD_DIR):
 origins = [
     "http://localhost:5173",  # React dev server
     "http://127.0.0.1:5173",  # sometimes needed
-    "https://docu-retriver-langcahin-frontend.vercel.app", #my site
+    "https://pdf-query-frontend-beta.vercel.app", #my site
 ]
 
 # Configure CORS middleware
