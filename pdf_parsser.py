@@ -28,14 +28,13 @@ def parse_pdf(dir_list:list,useremail:str):
     pdf_dir = dir_list[0]  # Folder containing multiple PDFs
     output_dir = dir_list[1]
     os.makedirs(output_dir, exist_ok=True)
+    structured_output=[]
     # Loop over all PDF files in the input directory
     for pdf_file in os.listdir(pdf_dir):
         if pdf_file.endswith(".pdf"):
             pdf_path = os.path.join(pdf_dir, pdf_file)
             doc_name = os.path.splitext(pdf_file)[0]
             doc = fitz.open(pdf_path)
-            structured_output=[]
-
             print(f"Processing: {pdf_file}")
             for i, page in enumerate(doc):
                 # Extract and append text to the single file
