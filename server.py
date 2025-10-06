@@ -102,6 +102,7 @@ async def login(user: Login, request: Request):
 
 @app.post("/protected/upload/")
 async def upload( request: Request,files: list[UploadFile] = File(...)):
+    ALLOWED_EXTENSIONS = {".pdf", ".docx", ".mp3", ".wav", ".m4a",".aac", ".flac"}
     try:
         user_email= request.session.get("email_id")
         if not user_email:
@@ -113,8 +114,14 @@ async def upload( request: Request,files: list[UploadFile] = File(...)):
         user_input_directory=user_directory_info[0]
         all_filenames=[]
         for file in files:
-            all_filenames.append(file.filename)
-            file_path = os.path.join(user_input_directory, file.filename)
+            filename = file.filename
+            extension = os.path.splitext(filename)[1].lower()
+            if extension not in ALLOWED_EXTENSIONS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File type not allowed: {filename} (only {', '.join(ALLOWED_EXTENSIONS)})")
+            all_filenames.append(filename)
+            file_path = os.path.join(user_input_directory, filename)
             with open(file_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
         await asyncio.to_thread(parse_pdf, dir_list=user_directory_info, useremail=user_email)

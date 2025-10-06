@@ -5,6 +5,13 @@ import json
 import re
 import shutil
 
+from docx import Document
+
+from AudioConverter import convert_to_wav
+from AudioTranscriber import transcribe_full_audio
+
+AUDIO_EXTENSIONS = ('.mp3', '.m4a', '.flac') #wav is natively supported by azure so no need to add here
+
 def safe_folder_name(email: str) -> str:
     name = re.sub(r'[^a-zA-Z0-9]', '_', email.lower())
     return name.strip('_')
@@ -30,6 +37,15 @@ def parse_pdf(dir_list:list,useremail:str):
     os.makedirs(output_dir, exist_ok=True)
     structured_output=[]
     # Loop over all PDF files in the input directory
+    for file_name in os.listdir(pdf_dir):
+        if file_name.lower().endswith(AUDIO_EXTENSIONS):
+            try:
+                file_path = os.path.join(pdf_dir, file_name)
+                print(f"Processing audio file: {file_path}")
+                convert_to_wav(input_file=file_path)
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
+    
     for pdf_file in os.listdir(pdf_dir):
         if pdf_file.endswith(".pdf"):
             pdf_path = os.path.join(pdf_dir, pdf_file)
@@ -64,6 +80,65 @@ def parse_pdf(dir_list:list,useremail:str):
                     "text": text.strip(),
                     "image_file_name":image_filename_list})
             doc.close()
+        
+        elif pdf_file.endswith(".docx"):
+            docx_path = os.path.join(pdf_dir, pdf_file)
+            doc_name = os.path.splitext(pdf_file)[0]
+            docx_file = pdf_file
+
+            print(f"Processing: {docx_file}")
+
+            # Load the document
+            try:
+                doc = Document(docx_path)
+            except Exception as e:
+                print(f"❌ Error reading {docx_file}: {e}")
+                continue
+
+            # Extract text
+            paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+            text = "\n\n".join(paragraphs)
+
+            # Extract images
+            image_filename_list = []
+            image_count = 0
+            for rel in doc.part.rels:
+                rel = doc.part.rels[rel]
+                if "image" in rel.target_ref:
+                    image_count += 1
+                    image_data = rel.target_part.blob
+                    image_filename = f"{doc_name}_img_{image_count}.png"
+                    image_path = os.path.join(output_dir, image_filename)
+                    with open(image_path, "wb") as f:
+                        f.write(image_data)
+                    image_filename_list.append(image_path)
+
+            # Create one record per document (like one “page” for PDF version)
+            structured_output.append({
+                "user_email": useremail,
+                "doc": doc_name,
+                "page": 1,  # No concept of pages in DOCX
+                "text": text,
+                "image_file_name": image_filename_list
+            })
+        elif pdf_file.lower().endswith('.wav'):
+            try:
+                audio_path =os.path.join(pdf_dir, pdf_file)
+                audio_name = os.path.splitext(pdf_file)[0]
+                print(f"Processing audio file: {audio_path}")
+                audio_text = transcribe_full_audio(audio_path)
+                structured_output.append({
+                    "user_email": useremail,
+                    "doc": audio_name,
+                    "page": 1,
+                    "text": audio_text,
+                    "image_file_name": []
+                })
+            except Exception as e:
+                print(f"Error processing {pdf_file}: {e}")
+                continue
+    # Save the structured output to a JSON file
+
     json_path = os.path.join(output_dir, "all_text.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(structured_output, f, ensure_ascii=False, indent=2)

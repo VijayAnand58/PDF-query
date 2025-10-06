@@ -213,20 +213,20 @@ def delete_user_embeddings(user_email):
 #testing the functions
 # async def test_text_embeddings():
 #     # Example usage
-    # delete_user_embeddings("vijay.anand5306@zoho.com")
-    # parsed_json_path = r"output\vijay_anand5306_zoho_com\all_text.json"
-    # store_text_and_images(user_email="vijay.anand5306@zoho.com")
-    # user_email = "vijay.anand5306@zoho.com"
-    # query = "What about RNN?"
-    # query_img="What about RNN?"
-    # text_results = await search_text_total_directory(user_email=user_email, query=query, top_k=7)
-    # img_results = await search_images(user_email, query_img)
-    # print("Text Results:")
-    # print(text_results)
-    # print("\n\n\n\n")
-    # print(img_results)
-    # delete_user_embeddings(user_email="vijay.anand5306@zoho.com")
-# store_text_and_images("vijay.anand5306@zoho.com")
+#     delete_user_embeddings("vijay.anand5306@zoho.com")
+#     parsed_json_path = r"output\vijay_anand5306_zoho_com\all_text.json"
+#     store_text_and_images(user_email="vijay.anand5306@zoho.com")
+#     user_email = "vijay.anand5306@zoho.com"
+#     query = "What about RNN?"
+#     query_img="What about RNN?"
+#     text_results = await search_text_total_directory(user_email=user_email, query=query, top_k=7)
+#     img_results = await search_images(user_email, query_img)
+#     print("Text Results:")
+#     print(text_results)
+#     print("\n\n\n\n")
+#     print(img_results)
+#     delete_user_embeddings(user_email="vijay.anand5306@zoho.com")
+# # store_text_and_images("vijay.anand5306@zoho.com")
 
 # if __name__ == "__main__":
 #     import asyncio

@@ -18,3 +18,6 @@ itsdangerous
 langchain-community
 sentence-transformers
 python-multipart
+python-docx
+pydub
+azure-cognitiveservices-speech
