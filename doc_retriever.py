@@ -9,7 +9,7 @@ os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 from langchain.chat_models import init_chat_model
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-model_img = ChatGoogleGenerativeAI(model="gemini-1.5-flash",temperature=0.2)
+model_img = ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.2)
 llm = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
 
 from langgraph.graph import START, StateGraph
