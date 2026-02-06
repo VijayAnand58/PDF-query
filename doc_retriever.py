@@ -3,14 +3,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 os.environ["LANGSMITH_TRACING"] = "true"
-os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY")
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY") # type: ignore
+os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY") # type: ignore
 
 from langchain.chat_models import init_chat_model
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-model_img = ChatGoogleGenerativeAI(model="gemini-2.0-flash",temperature=0.2)
-llm = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
+model_img = ChatGoogleGenerativeAI(model="gemini-3-flash-preview",temperature=0.2)
+llm = init_chat_model("gemini-3-flash-preview", model_provider="google_genai")
 
 from langgraph.graph import START, StateGraph
 from langchain_core.documents import Document
@@ -36,7 +36,7 @@ class State(TypedDict):
     pdf_to_check_switch: Optional[bool]
     one_pdf_page_check_switch: Optional[bool]
     pdf_to_check: List[str]
-    one_pdf_page_check: list[str,int]
+    one_pdf_page_check: list[str,int] #type:ignore
     context: List[Document]
     context_metadata: Optional[dict]
     context_img_path: List[str]
@@ -119,7 +119,7 @@ async def retriever(state: State):
     # Extract image file paths from metadata
     context_img_path = [
         meta.get("image_path")
-        for meta in img_results.get("metadatas", [[]])[0]
+        for meta in img_results.get("metadatas", [[]])[0] # type: ignore
     ] if img_results and img_results.get("metadatas") else []
 
     return {
@@ -130,7 +130,7 @@ async def retriever(state: State):
 
 async def generate_text_content(state: State):
     docs_content = "\n\n".join(
-        f"Document: {doc['doc']}, Page: {doc['page']},\n{doc['text']}"
+        f"Document: {doc['doc']}, Page: {doc['page']},\n{doc['text']}" # type: ignore
         for doc in state["context"])
     messages = await prompt.ainvoke({"question": state["question"], "context": docs_content})
     response = await llm.ainvoke(messages)
@@ -158,7 +158,7 @@ async def generate_img_content(state: State):
             "type": "image_url",
             "image_url": f"data:image/png;base64,{b64img}"
         })
-    message = HumanMessage(content=[{"type": "text", "text": userquery}] + image_inputs)
+    message = HumanMessage(content=[{"type": "text", "text": userquery}] + image_inputs) # type: ignore
     response = await model_img.ainvoke([message])
     return {"answer_img": response.content}
 
@@ -170,7 +170,7 @@ graph = graph_builder.compile()
 def encode_image_to_base64(path: str) -> str:
     """Convert image file to base64 data URI"""
     if not os.path.exists(path):
-        return None
+        return None # type: ignore
     with open(path, "rb") as f:
         b64img = base64.b64encode(f.read()).decode("utf-8")
     return f"data:image/png;base64,{b64img}"
@@ -178,7 +178,7 @@ def encode_image_to_base64(path: str) -> str:
 
 async def ask_question(input:str, user_email:str, image_search_switch:bool=False,
                   pdf_to_check_switch:bool=False, one_pdf_page_check_switch:bool=False, 
-                  pdf_to_check:list=None, one_pdf_page_check:list=None):
+                  pdf_to_check:list | None=None, one_pdf_page_check:list | None=None):
     try:
         print("running ask question")
         if pdf_to_check_switch and  one_pdf_page_check_switch:
@@ -192,7 +192,7 @@ async def ask_question(input:str, user_email:str, image_search_switch:bool=False
             "pdf_to_check": pdf_to_check if pdf_to_check else [],
             "one_pdf_page_check": one_pdf_page_check if one_pdf_page_check else [],
         }
-        state_output = await graph.ainvoke(state_input)
+        state_output = await graph.ainvoke(state_input) # type: ignore
         if image_search_switch:
             image_paths= state_output["context_img_path"]
             encoded_img = [encode_image_to_base64(path) for path in image_paths]

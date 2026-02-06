@@ -86,9 +86,9 @@ def store_text_and_images(user_email: str):
 
         for img_path, meta in image_data:
             image = Image.open(img_path).convert("RGB")
-            inputs = clip_processor(images=image, return_tensors="pt")
+            inputs = clip_processor(images=image, return_tensors="pt") # type: ignore
             with torch.no_grad():
-                emb = clip_model.get_image_features(**inputs)[0].cpu().numpy().tolist()
+                emb = clip_model.get_image_features(**inputs)[0].cpu().numpy().tolist() #type:ignore
 
             img_embeddings.append(emb)
             img_docs.append(os.path.basename(img_path))
@@ -103,7 +103,7 @@ def store_text_and_images(user_email: str):
             ids=img_ids)
 
 
-    print("✅ Data stored in Chroma")
+    print("Data stored in Chroma")
 
 async def search_text_total_directory(user_email, query, top_k=5):
     store = Chroma(
@@ -139,7 +139,7 @@ async def search_text_page_per_pdf(user_email, query, page_number, pdf_name ,top
 
 async def search_images(user_email, query, top_k=2):
     def _search_images():
-        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True)
+        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True) # type: ignore
         with torch.no_grad():
             query_emb = clip_model.get_text_features(**inputs)[0].cpu().numpy().tolist()
 
@@ -154,7 +154,7 @@ async def search_images(user_email, query, top_k=2):
 
 async def search_images_specific_pdfs(user_email, query, pdf_names, top_k=2):
     def _search_images_specific_pdfs():
-        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True)
+        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True) # type: ignore
         with torch.no_grad():
             query_emb = clip_model.get_text_features(**inputs)[0].cpu().numpy().tolist()
 
@@ -174,7 +174,7 @@ async def search_images_specific_pdfs(user_email, query, pdf_names, top_k=2):
 
 async def search_images_specific_pages(user_email, query, pdf_name,page_number ,top_k=2):
     def _search_images_specific_pages():
-        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True)
+        inputs = clip_processor.tokenizer([query], return_tensors="pt", padding=True) # type: ignore
         with torch.no_grad():
             query_emb = clip_model.get_text_features(**inputs)[0].cpu().numpy().tolist()
 
@@ -207,7 +207,7 @@ def delete_user_embeddings(user_email):
     )
     img_store._collection.delete(where={"user_email": user_email})
 
-    print(f"✅ Deleted embeddings for user: {user_email}")
+    print(f"Deleted embeddings for user: {user_email}")
 
 # delete_user_embeddings("vijay.anand5306@zoho.com")
 #testing the functions

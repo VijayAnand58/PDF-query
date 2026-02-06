@@ -115,13 +115,13 @@ async def upload( request: Request,files: list[UploadFile] = File(...)):
         all_filenames=[]
         for file in files:
             filename = file.filename
-            extension = os.path.splitext(filename)[1].lower()
+            extension = os.path.splitext(filename)[1].lower() # type: ignore
             if extension not in ALLOWED_EXTENSIONS:
                 raise HTTPException(
                     status_code=400,
                     detail=f"File type not allowed: {filename} (only {', '.join(ALLOWED_EXTENSIONS)})")
             all_filenames.append(filename)
-            file_path = os.path.join(user_input_directory, filename)
+            file_path = os.path.join(user_input_directory, filename) # type: ignore
             with open(file_path, "wb") as f:
                 shutil.copyfileobj(file.file, f)
         await asyncio.to_thread(parse_pdf, dir_list=user_directory_info, useremail=user_email)
@@ -134,7 +134,7 @@ async def upload( request: Request,files: list[UploadFile] = File(...)):
     except Exception as e:
         if request.session.get("email_id"):
             user_email = request.session.get("email_id")
-            delete_all_traces(email_address=user_email)
+            delete_all_traces(email_address=user_email) # type: ignore
             delete_user_embeddings(user_email=user_email)
             print("Deleted user traces due to error.")
         print("Error in file upload and processing.",e)
@@ -151,7 +151,7 @@ async def chat_with_all_pdfs(chat:Chat,request: Request):
         if not user_email:
             raise HTTPException(status_code=401, detail="User not logged in")
         result:dict= await ask_question(user_email=user_email,input=chat.query,
-                                 image_search_switch=chat.image_switch)
+                                 image_search_switch=chat.image_switch) # type: ignore
         response={'message':"Successfully retrieved",
                   'result':result}
         return response
@@ -172,7 +172,7 @@ async def chat_with_specific_pdfs(chat:ChatSpecificPDFs,request: Request):
         if not user_email:
             raise HTTPException(status_code=401, detail="User not logged in")
         result:dict= await ask_question(user_email=user_email,input=chat.query,
-                                 image_search_switch=chat.image_switch,
+                                 image_search_switch=chat.image_switch, # type: ignore
                                  pdf_to_check_switch=True,
                                  pdf_to_check=pdf_names_cleaned)
         response={'message':"Successfully retrieved",
@@ -198,7 +198,7 @@ async def chat_with_one_pdf_page(chat:ChatOnePDFPage,request: Request):
         if not user_email:
             raise HTTPException(status_code=401, detail="User not logged in")
         result:dict= await ask_question(user_email=user_email,input=chat.query,
-                                 image_search_switch=chat.image_switch,
+                                 image_search_switch=chat.image_switch, # type: ignore
                                  one_pdf_page_check_switch=True,
                                  one_pdf_page_check=[pdf_name_cleaned,chat.page_number])
         response={'message':"Successfully retrieved",

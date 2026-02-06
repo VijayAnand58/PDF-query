@@ -44,7 +44,7 @@ def parse_pdf(dir_list:list,useremail:str):
                 print(f"Processing audio file: {file_path}")
                 convert_to_wav(input_file=file_path)
             except Exception as e:
-                print(f"Error processing {file_path}: {e}")
+                print(f"Error processing {file_path}: {e}") # type: ignore
     
     for pdf_file in os.listdir(pdf_dir):
         if pdf_file.endswith(".pdf"):
@@ -52,7 +52,7 @@ def parse_pdf(dir_list:list,useremail:str):
             doc_name = os.path.splitext(pdf_file)[0]
             doc = fitz.open(pdf_path)
             print(f"Processing: {pdf_file}")
-            for i, page in enumerate(doc):
+            for i, page in enumerate(doc): # type: ignore
                 # Extract and append text to the single file
 
                 text = page.get_text()
@@ -92,7 +92,7 @@ def parse_pdf(dir_list:list,useremail:str):
             try:
                 doc = Document(docx_path)
             except Exception as e:
-                print(f"❌ Error reading {docx_file}: {e}")
+                print(f"Error reading {docx_file}: {e}")
                 continue
 
             # Extract text
@@ -145,7 +145,7 @@ def parse_pdf(dir_list:list,useremail:str):
     print("Done JSON dumping")
     print(f"Done! Combined text and images saved in: {os.path.abspath(output_dir)}")
 
-def delete_all_traces(email_address:str=None):
+def delete_all_traces(email_address:str=None): # type: ignore
     if email_address is None:
         raise ValueError("Email address must be provided to delete traces.")
     user_folder = safe_folder_name(email_address)

@@ -4,7 +4,7 @@ import os
 # Allowed audio extensions
 ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".aac", ".flac"}
 
-def convert_to_wav(input_file: str, output_file: str = None) -> str:
+def convert_to_wav(input_file: str, output_file: str | None = None) -> str:
 
     try:
         if not os.path.isfile(input_file):
@@ -29,7 +29,7 @@ def convert_to_wav(input_file: str, output_file: str = None) -> str:
 
     except Exception as e:
         print(f"Error converting file: {e}")
-        return None
+        return None #type:ignore
 
 
 # Example usage
